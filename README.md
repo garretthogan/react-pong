@@ -2,6 +2,10 @@
 
 A modern single-player 3D Pong game built with React, Three.js, and react-three-fiber.
 
+## Play Online
+
+🎮 **[Play the game here!](https://garretthogan.github.io/react-pong/)**
+
 ## Features
 
 - **3D Graphics**: Full 3D rendering using WebGL through react-three-fiber
