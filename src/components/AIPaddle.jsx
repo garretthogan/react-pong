@@ -2,15 +2,15 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { PADDLE_WIDTH, PADDLE_HEIGHT, PADDLE_DEPTH, COURT_WIDTH, AI_SPEED } from '../constants/gameConstants'
 
-export default function AIPaddle({ position, ballPosition, paddleRef, difficultyLevel, baseDifficulty = 0.5, color }) {
+export default function AIPaddle({ position, ballPosition, paddleRef, difficultyLevel, baseDifficulty = 0.5, color, paused }) {
   const errorOffsetRef = useRef(0)
   const reactionDelayRef = useRef(0)
   const lastUpdateRef = useRef(0)
   const d = Math.max(0, Math.min(1, baseDifficulty))
 
   useFrame(({ clock }) => {
-    if (paddleRef.current && ballPosition) {
-      const currentTime = clock.getElapsedTime()
+    if (paused || !paddleRef.current || !ballPosition) return
+    const currentTime = clock.getElapsedTime()
 
       // Base difficulty from slider (0 = easy, 1 = hard) scales error, speed, and reaction
       const baseErrorScale = 1 - d * 0.7
@@ -48,7 +48,6 @@ export default function AIPaddle({ position, ballPosition, paddleRef, difficulty
         -COURT_WIDTH / 2 + PADDLE_WIDTH / 2,
         Math.min(COURT_WIDTH / 2 - PADDLE_WIDTH / 2, paddleRef.current.position.x)
       )
-    }
   })
 
   return (

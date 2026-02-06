@@ -6,7 +6,7 @@ import PlayerPaddle from './PlayerPaddle'
 import AIPaddle from './AIPaddle'
 import Ball from './Ball'
 
-export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef, aiDifficulty: aiDifficultySetting = 0.5, audioMuted = false }) {
+export default function GameScene({ onScoreChange, colorTheme, gameStarted, paused = false, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef, aiDifficulty: aiDifficultySetting = 0.5, audioMuted = false }) {
   const baseSpeed = ballSpeed ?? BALL_SPEED
   const [mouseX, setMouseX] = useState(0)
   const [ballPosition, setBallPosition] = useState([0, 0, 0])
@@ -54,12 +54,16 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
     }
   }, [playerScore, aiScore, onScoreChange])
 
-  // Mouse movement handler
+  const POINTER_LOCK_SENSITIVITY = 0.002
+
+  // Mouse movement handler (uses movementX when pointer is locked, else clientX)
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (mouseControlEnabled) {
-        const x = (e.clientX / window.innerWidth) * 2 - 1
-        setMouseX(x)
+      if (!mouseControlEnabled) return
+      if (document.pointerLockElement) {
+        setMouseX((prev) => Math.max(-1, Math.min(1, prev + e.movementX * POINTER_LOCK_SENSITIVITY)))
+      } else {
+        setMouseX((e.clientX / window.innerWidth) * 2 - 1)
       }
     }
     
@@ -179,6 +183,8 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
     }
   }, [audioUnlockRef])
 
+  const PADDLE_HIT_VOLUME = 0.35
+
   const playPaddleHitSound = () => {
     if (audioMuted) return
     const sounds = paddleHitSoundsRef.current
@@ -186,6 +192,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
     const i = nextPaddleSoundIndexRef.current % sounds.length
     nextPaddleSoundIndexRef.current = (i + 1) % sounds.length
     const s = sounds[i]
+    s.volume = PADDLE_HIT_VOLUME
     s.currentTime = 0
     s.play().catch(() => {})
   }
@@ -256,6 +263,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         mouseX={mouseX} 
         paddleRef={playerPaddleRef}
         color={colorTheme.playerPaddle}
+        paused={paused}
       />
       <AIPaddle 
         position={[0, 0.2, COURT_DEPTH / 2 - 1]} 
@@ -264,6 +272,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         difficultyLevel={aiDifficulty}
         baseDifficulty={aiDifficultySetting}
         color={colorTheme.aiPaddle}
+        paused={paused}
       />
       <Ball 
         position={ballPosition} 
@@ -273,6 +282,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         onOutOfBounds={handleOutOfBounds}
         color={colorTheme.ball}
         gameStarted={gameStarted}
+        paused={paused}
       />
     </>
   )

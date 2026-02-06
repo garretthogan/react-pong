@@ -32,6 +32,7 @@ function App() {
   const [gameOver, setGameOver] = useState(false)
   const [winner, setWinner] = useState(null)
   const [gameKey, setGameKey] = useState(0)
+  const [paused, setPaused] = useState(false)
   const [baseBallSpeed, setBaseBallSpeed] = useState(loadBallSpeed)
   const [themeVolume, setThemeVolume] = useState(() => {
     try {
@@ -56,12 +57,14 @@ function App() {
   })
   const themeAudioRef = useRef(null)
 
+  const MUSIC_MIX_LEVEL = 0.25
+
   useEffect(() => {
     const base = import.meta.env.BASE_URL
     const audio = new Audio(`${base}sounds/themesong.wav`)
     audio.loop = true
     themeAudioRef.current = audio
-    audio.volume = themeMuted ? 0 : themeVolume
+    audio.volume = themeMuted ? 0 : themeVolume * MUSIC_MIX_LEVEL
     audio.play().catch(() => {})
     return () => { audio.pause(); themeAudioRef.current = null }
   }, [])
@@ -69,7 +72,7 @@ function App() {
   useEffect(() => {
     const a = themeAudioRef.current
     if (!a) return
-    a.volume = themeMuted ? 0 : themeVolume
+    a.volume = themeMuted ? 0 : themeVolume * MUSIC_MIX_LEVEL
   }, [themeVolume, themeMuted])
 
   useEffect(() => {
@@ -79,6 +82,44 @@ function App() {
       localStorage.setItem(AI_DIFFICULTY_STORAGE_KEY, String(aiDifficulty))
     } catch (e) {}
   }, [themeVolume, themeMuted, aiDifficulty])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target
+      const inInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable
+      if (e.key === 'Escape') {
+        if (gameStarted && !gameOver) {
+          e.preventDefault()
+          setPaused(true)
+          document.exitPointerLock()
+        }
+        return
+      }
+      if (e.key?.toLowerCase() === 'm') {
+        if (inInput) return
+        e.preventDefault()
+        setThemeMuted((m) => !m)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [gameStarted, gameOver])
+
+  useEffect(() => {
+    if (!gameStarted || gameOver || paused || !mouseControlEnabled) {
+      if (document.pointerLockElement === gameAreaRef.current) document.exitPointerLock()
+    }
+  }, [gameStarted, gameOver, paused, mouseControlEnabled])
+
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      if (!document.pointerLockElement && gameAreaRef.current && gameStarted && !gameOver) {
+        setPaused(true)
+      }
+    }
+    document.addEventListener('pointerlockchange', handlePointerLockChange)
+    return () => document.removeEventListener('pointerlockchange', handlePointerLockChange)
+  }, [gameStarted, gameOver])
 
   // Persist ball speed to localStorage
   useEffect(() => {
@@ -130,6 +171,7 @@ function App() {
   }
   
   const audioUnlockRef = useRef(null)
+  const gameAreaRef = useRef(null)
 
   const resetGame = () => {
     setPlayerScore(0)
@@ -137,6 +179,7 @@ function App() {
     setGameOver(false)
     setWinner(null)
     setGameStarted(false)
+    setPaused(false)
     gameOverProcessedRef.current = false // Reset for next game
     setGameKey(prev => prev + 1) // Force GameScene to remount with new random ball direction
   }
@@ -190,11 +233,13 @@ function App() {
       if (player >= 11) {
         setGameOver(true)
         setWinner('player')
+        setPaused(false)
         setStats(prev => ({ ...prev, wins: prev.wins + 1 }))
         gameOverProcessedRef.current = true
       } else if (ai >= 11) {
         setGameOver(true)
         setWinner('ai')
+        setPaused(false)
         setStats(prev => ({ ...prev, losses: prev.losses + 1 }))
         gameOverProcessedRef.current = true
       }
@@ -367,8 +412,20 @@ function App() {
         </div>
       </div>
       
-      {/* Game Area */}
-      <div style={{ flex: 1, position: 'relative', cursor: gameStarted && !gameOver ? 'none' : 'default' }}>
+      {/* Game Area - click to resume when paused */}
+      <div
+        ref={gameAreaRef}
+        style={{ flex: 1, position: 'relative', cursor: gameStarted && !gameOver && !paused ? 'none' : 'default' }}
+        onClick={() => {
+          if (paused) {
+            setPaused(false)
+            if (mouseControlEnabled) gameAreaRef.current?.requestPointerLock()
+          }
+        }}
+        role="button"
+        tabIndex={-1}
+        aria-label={paused ? 'Click to resume game' : undefined}
+      >
         {/* Start Button */}
         {!gameStarted && !gameOver && (
           <div style={{
@@ -384,6 +441,7 @@ function App() {
                 if (audioUnlockRef.current) audioUnlockRef.current()
                 if (themeAudioRef.current && !themeMuted) themeAudioRef.current.play().catch(() => {})
                 setGameStarted(true)
+                if (mouseControlEnabled) gameAreaRef.current?.requestPointerLock()
               }}
               style={{
                 padding: '20px 60px',
@@ -416,6 +474,37 @@ function App() {
               fontFamily: 'monospace'
             }}>
               Click to begin playing
+            </p>
+          </div>
+        )}
+
+        {/* Paused overlay */}
+        {paused && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 2,
+            textAlign: 'center',
+            pointerEvents: 'none'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              color: '#ffffff',
+              marginBottom: '16px',
+              textShadow: '0 2px 12px rgba(0,0,0,0.8)'
+            }}>
+              Paused
+            </div>
+            <p style={{
+              fontSize: '18px',
+              color: 'rgba(255,255,255,0.8)',
+              fontFamily: 'monospace'
+            }}>
+              Click the court to resume
             </p>
           </div>
         )}
@@ -514,7 +603,7 @@ function App() {
             width: '100%', 
             height: '100%', 
             background: '#0a0a0a',
-            cursor: gameStarted && !gameOver ? 'none' : 'default'
+            cursor: gameStarted && !gameOver && !paused ? 'none' : 'default'
           }}
         >
           <GameScene 
@@ -522,6 +611,7 @@ function App() {
             onScoreChange={handleScoreUpdate}
             colorTheme={colorTheme}
             gameStarted={gameStarted && !gameOver}
+            paused={paused}
             mouseControlEnabled={mouseControlEnabled}
             ballSpeed={baseBallSpeed}
             audioUnlockRef={audioUnlockRef}

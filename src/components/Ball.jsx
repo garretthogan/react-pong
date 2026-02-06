@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BALL_SIZE, COURT_WIDTH, COURT_DEPTH } from '../constants/gameConstants'
 
-export default function Ball({ position, velocity, onPositionChange, onScore, onOutOfBounds, color, gameStarted }) {
+export default function Ball({ position, velocity, onPositionChange, onScore, onOutOfBounds, color, gameStarted, paused }) {
   const ballRef = useRef()
   const velocityRef = useRef(velocity)
   const outOfBoundsTimeRef = useRef(null)
@@ -17,8 +17,8 @@ export default function Ball({ position, velocity, onPositionChange, onScore, on
     if (ballRef.current) {
       const currentTime = state.clock.getElapsedTime()
       
-      // Don't move ball until game has started; keep in sync with parent
-      if (!gameStarted) {
+      // Don't move ball until game has started, or when paused; keep in sync with parent
+      if (!gameStarted || paused) {
         ballRef.current.position.x = position[0]
         ballRef.current.position.y = 0.3
         ballRef.current.position.z = position[1]
