@@ -6,7 +6,7 @@ import PlayerPaddle from './PlayerPaddle'
 import AIPaddle from './AIPaddle'
 import Ball from './Ball'
 
-export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED }) {
+export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef }) {
   const baseSpeed = ballSpeed ?? BALL_SPEED
   const [mouseX, setMouseX] = useState(0)
   const [ballPosition, setBallPosition] = useState([0, 0, 0])
@@ -153,6 +153,41 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
 
   // Ball collision detection with paddles
   const lastHitRef = useRef(null)
+  const paddleHitSoundsRef = useRef(null)
+  const nextPaddleSoundIndexRef = useRef(0)
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL
+    const sounds = [
+      new Audio(`${base}sounds/ball-hit-paddle1.wav`),
+      new Audio(`${base}sounds/ball-hit-paddle2.wav`)
+    ]
+    paddleHitSoundsRef.current = sounds
+    if (audioUnlockRef) {
+      audioUnlockRef.current = () => {
+        const first = sounds[0]
+        first.volume = 1
+        first.currentTime = 0
+        first.play().then(() => {
+          setTimeout(() => first.pause(), 80)
+        }).catch(() => {})
+        sounds.slice(1).forEach((s) => {
+          s.volume = 0
+          s.play().then(() => { s.pause(); s.volume = 1 }).catch(() => { s.volume = 1 })
+        })
+      }
+    }
+  }, [audioUnlockRef])
+
+  const playPaddleHitSound = () => {
+    const sounds = paddleHitSoundsRef.current
+    if (!sounds) return
+    const i = nextPaddleSoundIndexRef.current % sounds.length
+    nextPaddleSoundIndexRef.current = (i + 1) % sounds.length
+    const s = sounds[i]
+    s.currentTime = 0
+    s.play().catch(() => {})
+  }
 
   useFrame(() => {
     const playerPaddleZ = -COURT_DEPTH / 2 + 1
@@ -174,6 +209,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         // Increase AI difficulty when player successfully returns the ball
         setAiDifficulty(prev => prev + 1)
         
+        playPaddleHitSound()
         const hitPosition = (ballPosition[0] - playerPaddleX) / (PADDLE_WIDTH / 2)
         setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.7, currentBallSpeedRef.current])
         lastHitRef.current = 'player'
@@ -193,6 +229,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         // Increase ball speed by 8% on each hit, max 2x initial speed
         currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
         
+        playPaddleHitSound()
         const hitPosition = (ballPosition[0] - aiPaddleX) / (PADDLE_WIDTH / 2)
         setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.5, -currentBallSpeedRef.current])
         lastHitRef.current = 'ai'

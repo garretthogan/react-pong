@@ -80,6 +80,8 @@ function App() {
     }
   }
   
+  const audioUnlockRef = useRef(null)
+
   const resetGame = () => {
     setPlayerScore(0)
     setAiScore(0)
@@ -329,7 +331,10 @@ function App() {
             textAlign: 'center'
           }}>
             <button
-              onClick={() => setGameStarted(true)}
+              onClick={() => {
+                if (audioUnlockRef.current) audioUnlockRef.current()
+                setGameStarted(true)
+              }}
               style={{
                 padding: '20px 60px',
                 fontSize: '32px',
@@ -469,6 +474,7 @@ function App() {
             gameStarted={gameStarted && !gameOver}
             mouseControlEnabled={mouseControlEnabled}
             ballSpeed={baseBallSpeed}
+            audioUnlockRef={audioUnlockRef}
           />
         </Canvas>
       </div>
