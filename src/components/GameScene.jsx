@@ -6,7 +6,7 @@ import PlayerPaddle from './PlayerPaddle'
 import AIPaddle from './AIPaddle'
 import Ball from './Ball'
 
-export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef }) {
+export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef, aiDifficulty: aiDifficultySetting = 0.5 }) {
   const baseSpeed = ballSpeed ?? BALL_SPEED
   const [mouseX, setMouseX] = useState(0)
   const [ballPosition, setBallPosition] = useState([0, 0, 0])
@@ -261,6 +261,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         ballPosition={ballPosition} 
         paddleRef={aiPaddleRef} 
         difficultyLevel={aiDifficulty}
+        baseDifficulty={aiDifficultySetting}
         color={colorTheme.aiPaddle}
       />
       <Ball 

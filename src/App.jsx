@@ -5,6 +5,9 @@ import { BALL_SPEED } from './constants/gameConstants'
 import './App.css'
 
 const BALL_SPEED_STORAGE_KEY = 'pongBallSpeed'
+const THEME_VOLUME_STORAGE_KEY = 'pongThemeVolume'
+const THEME_MUTED_STORAGE_KEY = 'pongThemeMuted'
+const AI_DIFFICULTY_STORAGE_KEY = 'pongAiDifficulty'
 const MIN_BALL_SPEED = 1
 const MAX_BALL_SPEED = 50
 
@@ -30,7 +33,53 @@ function App() {
   const [winner, setWinner] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const [baseBallSpeed, setBaseBallSpeed] = useState(loadBallSpeed)
-  
+  const [themeVolume, setThemeVolume] = useState(() => {
+    try {
+      const v = localStorage.getItem(THEME_VOLUME_STORAGE_KEY)
+      if (v != null) { const n = Number(v); if (!Number.isNaN(n) && n >= 0 && n <= 1) return n }
+    } catch (e) {}
+    return 0.5
+  })
+  const [themeMuted, setThemeMuted] = useState(() => {
+    try {
+      const m = localStorage.getItem(THEME_MUTED_STORAGE_KEY)
+      if (m !== null) return m === 'true'
+    } catch (e) {}
+    return false
+  })
+  const [aiDifficulty, setAiDifficulty] = useState(() => {
+    try {
+      const v = localStorage.getItem(AI_DIFFICULTY_STORAGE_KEY)
+      if (v != null) { const n = Number(v); if (!Number.isNaN(n) && n >= 0 && n <= 1) return n }
+    } catch (e) {}
+    return 0.5
+  })
+  const themeAudioRef = useRef(null)
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL
+    const audio = new Audio(`${base}sounds/themesong.wav`)
+    audio.loop = true
+    themeAudioRef.current = audio
+    audio.volume = themeMuted ? 0 : themeVolume
+    audio.play().catch(() => {})
+    return () => { audio.pause(); themeAudioRef.current = null }
+  }, [])
+
+  useEffect(() => {
+    const a = themeAudioRef.current
+    if (!a) return
+    a.volume = themeMuted ? 0 : themeVolume
+  }, [themeVolume, themeMuted])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_VOLUME_STORAGE_KEY, String(themeVolume))
+      localStorage.setItem(THEME_MUTED_STORAGE_KEY, String(themeMuted))
+      localStorage.setItem(AI_DIFFICULTY_STORAGE_KEY, String(aiDifficulty))
+    } catch (e) {}
+  }, [themeVolume, themeMuted, aiDifficulty])
+
   // Persist ball speed to localStorage
   useEffect(() => {
     try {
@@ -333,6 +382,7 @@ function App() {
             <button
               onClick={() => {
                 if (audioUnlockRef.current) audioUnlockRef.current()
+                if (themeAudioRef.current && !themeMuted) themeAudioRef.current.play().catch(() => {})
                 setGameStarted(true)
               }}
               style={{
@@ -475,6 +525,7 @@ function App() {
             mouseControlEnabled={mouseControlEnabled}
             ballSpeed={baseBallSpeed}
             audioUnlockRef={audioUnlockRef}
+            aiDifficulty={aiDifficulty}
           />
         </Canvas>
       </div>
@@ -583,6 +634,82 @@ function App() {
         >
           Reset Stats
         </button>
+
+        <div style={{
+          background: '#0a0a0a',
+          padding: '15px',
+          borderRadius: '8px',
+          marginTop: '20px'
+        }}>
+          <div style={{
+            fontSize: '12px',
+            opacity: 0.6,
+            marginBottom: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}>
+            Theme music
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
+            <input
+              type="checkbox"
+              checked={!themeMuted}
+              onChange={(e) => {
+                const unmuting = e.target.checked
+                setThemeMuted(!unmuting)
+                if (unmuting) themeAudioRef.current?.play().catch(() => {})
+              }}
+              style={{ marginRight: '8px', cursor: 'pointer', width: '16px', height: '16px' }}
+            />
+            <span>Unmuted</span>
+          </label>
+          <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', opacity: 0.8 }}>
+            Volume
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={themeVolume}
+            disabled={themeMuted}
+            onChange={(e) => {
+              setThemeVolume(Number(e.target.value))
+              if (!themeMuted) themeAudioRef.current?.play().catch(() => {})
+            }}
+            style={{ width: '100%', cursor: themeMuted ? 'default' : 'pointer' }}
+          />
+        </div>
+
+        <div style={{
+          background: '#0a0a0a',
+          padding: '15px',
+          borderRadius: '8px',
+          marginTop: '20px'
+        }}>
+          <label style={{
+            display: 'block',
+            fontSize: '12px',
+            opacity: 0.6,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}>
+            AI difficulty
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={aiDifficulty}
+            onChange={(e) => setAiDifficulty(Number(e.target.value))}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+          <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '4px' }}>
+            0 = easy, 1 = hard
+          </div>
+        </div>
 
         <div style={{
           background: '#0a0a0a',
