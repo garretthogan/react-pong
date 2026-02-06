@@ -38,7 +38,7 @@ function App() {
       const v = localStorage.getItem(THEME_VOLUME_STORAGE_KEY)
       if (v != null) { const n = Number(v); if (!Number.isNaN(n) && n >= 0 && n <= 1) return n }
     } catch (e) {}
-    return 0.5
+    return 0.25
   })
   const [themeMuted, setThemeMuted] = useState(() => {
     try {
@@ -213,7 +213,7 @@ function App() {
         zIndex: 1,
         borderRight: '2px solid #333'
       }}>
-        <h1 style={{ margin: '0 0 20px 0', fontSize: '32px', color: '#ffffff' }}>3D PONG</h1>
+        <h1 style={{ margin: '0 0 20px 0', fontSize: '32px', color: '#ffffff' }}>BATTLE PADDLES</h1>
         
         <div style={{
           background: '#0a0a0a',
@@ -526,6 +526,7 @@ function App() {
             ballSpeed={baseBallSpeed}
             audioUnlockRef={audioUnlockRef}
             aiDifficulty={aiDifficulty}
+            audioMuted={themeMuted}
           />
         </Canvas>
       </div>

@@ -1,69 +1,50 @@
-# 3D Pong Game
+# Battle Paddles
 
-A modern single-player 3D Pong game built with React, Three.js, and react-three-fiber.
+Classic Pong in 3D—play against the computer in your browser.
 
-## Play Online
+## Play Now
 
-🎮 **[Play the game here!](https://garretthogan.github.io/react-pong/)**
+**[Play Battle Paddles →](https://garretthogan.github.io/react-pong/)**
 
-## Features
+No install, no sign-up. Just open the link and play.
 
-- **3D Graphics**: Full 3D rendering using WebGL through react-three-fiber
-- **Single Player Mode**: Play against an AI opponent
-- **Smooth Controls**: Control your paddle with mouse movement or keyboard (Arrow Keys / A-D)
-- **Real-time Physics**: Ball bounces realistically off paddles and walls
-- **Score Tracking**: Keep track of player vs AI scores
-- **Interactive Camera**: OrbitControls allow you to adjust the viewing angle
+---
+
+## How to Play
+
+- **Goal:** Get the ball past the AI’s paddle. First to 11 points wins.
+- **Your paddle** is at the bottom (green by default). Keep the ball in play and try to make the AI miss.
+- **Ball speed** increases a bit with each hit, so rallies get faster. The ball also bounces off the side walls.
 
 ## Controls
 
-- **Mouse**: Move your mouse left/right to control the paddle
-- **Keyboard**: Use Arrow Keys (←/→) or A/D keys for paddle control
+| Input | Action |
+|-------|--------|
+| **Mouse** | Move left/right to move your paddle *(enable “Enable Mouse Control” in the left panel first)* |
+| **Arrow keys** | ← → to move your paddle |
+| **A / D** | Same as arrow keys |
 
-## Getting Started
+Click **START GAME** to begin. Use the left panel to turn on mouse control and change colors if you like.
 
-### Prerequisites
+## What You Can Adjust
 
-- Node.js (v14 or higher)
-- npm or yarn
+- **Right panel – Theme music:** Volume slider and mute for the background music.
+- **Right panel – AI difficulty:** Slider from 0 (easy) to 1 (hard). Higher = faster, more accurate AI.
+- **Right panel – Base ball speed:** How fast the ball starts (1–50). Your choice is saved for next time.
+- **Left panel – Color theme:** Change paddle, ball, and court colors.
+- **Left panel – Enable Mouse Control:** Turn on mouse movement for the paddle.
 
-### Installation
+Scores and your settings (ball speed, difficulty, volume, mute, colors) are saved in your browser so they’re there next time you play.
 
-```bash
-npm install
-```
+## Run It Yourself
 
-### Run the Game
+If you want to run the game locally (e.g. to hack on it):
 
-```bash
-npm run dev
-```
+- **Requirements:** Node.js (v14+), npm or yarn  
+- **Install:** `npm install`  
+- **Play locally:** `npm run dev` then open the URL shown (e.g. http://localhost:5173)  
+- **Production build:** `npm run build`
 
-Open your browser and navigate to the local development server (typically `http://localhost:5173`)
+---
 
-### Build for Production
-
-```bash
-npm run build
-```
-
-## Technologies Used
-
-- **React 19**: UI framework
-- **Three.js**: 3D graphics library
-- **react-three-fiber**: React renderer for Three.js
-- **@react-three/drei**: Useful helpers for react-three-fiber
-- **Vite**: Fast build tool and dev server
-
-## Game Mechanics
-
-- The ball increases speed with each successful hit
-- The AI opponent tracks the ball's position with slight delay for balanced difficulty
-- Paddle collisions affect ball trajectory based on where the ball hits
-- Score a point when the ball passes your opponent's paddle
-
-## License
-
-MIT
-
-Enjoy the game!
+**License:** MIT — play, share, and modify as you like.
