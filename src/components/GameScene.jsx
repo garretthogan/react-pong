@@ -1,12 +1,13 @@
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BALL_SPEED, COURT_DEPTH, PADDLE_WIDTH, PADDLE_DEPTH, BALL_SIZE } from '../constants/gameConstants'
+import { BALL_SPEED, MAX_BALL_SPEED, COURT_DEPTH, PADDLE_WIDTH, PADDLE_DEPTH, BALL_SIZE } from '../constants/gameConstants'
 import Court from './Court'
 import PlayerPaddle from './PlayerPaddle'
 import AIPaddle from './AIPaddle'
 import Ball from './Ball'
 
-export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled }) {
+export default function GameScene({ onScoreChange, colorTheme, gameStarted, mouseControlEnabled, ballSpeed = BALL_SPEED }) {
+  const baseSpeed = ballSpeed ?? BALL_SPEED
   const [mouseX, setMouseX] = useState(0)
   const [ballPosition, setBallPosition] = useState([0, 0, 0])
   
@@ -16,7 +17,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
     // At game start, send toward random paddle (straight since paddles start at center)
     return [
       0,
-      BALL_SPEED * (towardPlayer ? -1 : 1)
+      baseSpeed * (towardPlayer ? -1 : 1)
     ]
   }
   
@@ -29,7 +30,22 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
   // Refs to track actual paddle positions and current ball speed
   const playerPaddleRef = useRef()
   const aiPaddleRef = useRef()
-  const currentBallSpeedRef = useRef(BALL_SPEED)
+  const currentBallSpeedRef = useRef(baseSpeed)
+  const prevGameStartedRef = useRef(false)
+
+  useEffect(() => {
+    currentBallSpeedRef.current = baseSpeed
+  }, [baseSpeed])
+
+  // When game starts, set ball velocity from current base speed (so panel speed applies to initial spawn)
+  useEffect(() => {
+    if (gameStarted && !prevGameStartedRef.current) {
+      const towardPlayer = Math.random() < 0.5
+      setBallVelocity([0, baseSpeed * (towardPlayer ? -1 : 1)])
+      currentBallSpeedRef.current = baseSpeed
+    }
+    prevGameStartedRef.current = gameStarted
+  }, [gameStarted, baseSpeed])
   
   // Update parent component when scores change
   useEffect(() => {
@@ -82,7 +98,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
 
   const resetBallToTarget = (towardAI) => {
     // Reset ball speed to initial value
-    currentBallSpeedRef.current = BALL_SPEED
+    currentBallSpeedRef.current = baseSpeed
     
     // Reset AI difficulty to starting level
     setAiDifficulty(0)
@@ -108,8 +124,8 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
     
     // Normalize and scale by ball speed
     setBallVelocity([
-      (dx / distance) * BALL_SPEED,
-      (dz / distance) * BALL_SPEED
+      (dx / distance) * baseSpeed,
+      (dz / distance) * baseSpeed
     ])
   }
   
@@ -153,7 +169,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         lastHitRef.current !== 'player'
       ) {
         // Increase ball speed by 8% on each hit, max 2x initial speed
-        currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, BALL_SPEED * 2)
+        currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
         
         // Increase AI difficulty when player successfully returns the ball
         setAiDifficulty(prev => prev + 1)
@@ -175,7 +191,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, mous
         lastHitRef.current !== 'ai'
       ) {
         // Increase ball speed by 8% on each hit, max 2x initial speed
-        currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, BALL_SPEED * 2)
+        currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
         
         const hitPosition = (ballPosition[0] - aiPaddleX) / (PADDLE_WIDTH / 2)
         setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.5, -currentBallSpeedRef.current])

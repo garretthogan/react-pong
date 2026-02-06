@@ -1,7 +1,25 @@
 import { useRef, useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import GameScene from './components/GameScene'
+import { BALL_SPEED } from './constants/gameConstants'
 import './App.css'
+
+const BALL_SPEED_STORAGE_KEY = 'pongBallSpeed'
+const MIN_BALL_SPEED = 1
+const MAX_BALL_SPEED = 50
+
+function loadBallSpeed() {
+  try {
+    const saved = localStorage.getItem(BALL_SPEED_STORAGE_KEY)
+    if (saved != null) {
+      const n = Number(saved)
+      if (!Number.isNaN(n) && n >= MIN_BALL_SPEED && n <= MAX_BALL_SPEED) return n
+    }
+  } catch (e) {
+    console.error('Error loading ball speed from localStorage:', e)
+  }
+  return BALL_SPEED
+}
 
 function App() {
   const [playerScore, setPlayerScore] = useState(0)
@@ -11,6 +29,16 @@ function App() {
   const [gameOver, setGameOver] = useState(false)
   const [winner, setWinner] = useState(null)
   const [gameKey, setGameKey] = useState(0)
+  const [baseBallSpeed, setBaseBallSpeed] = useState(loadBallSpeed)
+  
+  // Persist ball speed to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(BALL_SPEED_STORAGE_KEY, String(baseBallSpeed))
+    } catch (e) {
+      console.error('Error saving ball speed to localStorage:', e)
+    }
+  }, [baseBallSpeed])
   
   // Load stats from localStorage with validation
   const loadStats = () => {
@@ -440,6 +468,7 @@ function App() {
             colorTheme={colorTheme}
             gameStarted={gameStarted && !gameOver}
             mouseControlEnabled={mouseControlEnabled}
+            ballSpeed={baseBallSpeed}
           />
         </Canvas>
       </div>
@@ -548,6 +577,53 @@ function App() {
         >
           Reset Stats
         </button>
+
+        <div style={{
+          background: '#0a0a0a',
+          padding: '15px',
+          borderRadius: '8px',
+          marginTop: '20px'
+        }}>
+          <label style={{
+            display: 'block',
+            fontSize: '12px',
+            opacity: 0.6,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}>
+            Base ball speed
+          </label>
+          <input
+            type="number"
+            min={MIN_BALL_SPEED}
+            max={MAX_BALL_SPEED}
+            value={baseBallSpeed}
+            onChange={(e) => {
+              const v = e.target.valueAsNumber
+              if (!Number.isNaN(v)) setBaseBallSpeed(Math.min(MAX_BALL_SPEED, Math.max(MIN_BALL_SPEED, v)))
+            }}
+            onBlur={(e) => {
+              const v = e.target.valueAsNumber
+              if (Number.isNaN(v) || v < MIN_BALL_SPEED) setBaseBallSpeed(MIN_BALL_SPEED)
+              else if (v > MAX_BALL_SPEED) setBaseBallSpeed(MAX_BALL_SPEED)
+            }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              background: '#1a1a2e',
+              color: '#fff',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '11px', opacity: 0.5, marginTop: '4px' }}>
+            {MIN_BALL_SPEED}–{MAX_BALL_SPEED} (units/sec)
+          </div>
+        </div>
       </div>
     </div>
   )

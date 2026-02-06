@@ -13,20 +13,30 @@ export default function Ball({ position, velocity, onPositionChange, onScore, on
     velocityRef.current = velocity
   }, [velocity])
 
-  useFrame(({ clock }) => {
+  useFrame((state, delta) => {
     if (ballRef.current) {
-      const currentTime = clock.getElapsedTime()
+      const currentTime = state.clock.getElapsedTime()
       
-      // Don't move ball until game has started
+      // Don't move ball until game has started; keep in sync with parent
       if (!gameStarted) {
+        ballRef.current.position.x = position[0]
         ballRef.current.position.y = 0.3
+        ballRef.current.position.z = position[1]
         onPositionChange([ballRef.current.position.x, ballRef.current.position.z])
         return
       }
       
-      // Update ball position
-      ballRef.current.position.x += velocityRef.current[0]
-      ballRef.current.position.z += velocityRef.current[1]
+      // Sync to center when parent resets (e.g. after score)
+      if (position[0] === 0 && position[1] === 0) {
+        ballRef.current.position.x = 0
+        ballRef.current.position.z = 0
+      }
+      
+      // Clamp delta to avoid large jumps (e.g. tab in background) that cause jitter
+      const dt = Math.min(delta, 0.1)
+      // Update ball position (dt = seconds since last frame → framerate-independent speed)
+      ballRef.current.position.x += velocityRef.current[0] * dt
+      ballRef.current.position.z += velocityRef.current[1] * dt
       // Keep ball at a fixed height above the ground
       ballRef.current.position.y = 0.3
 
@@ -95,7 +105,7 @@ export default function Ball({ position, velocity, onPositionChange, onScore, on
   })
 
   return (
-    <mesh ref={ballRef} position={[position[0], 0.3, position[1]]}>
+    <mesh ref={ballRef}>
       <sphereGeometry args={[BALL_SIZE, 32, 32]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
     </mesh>

@@ -7,4 +7,7 @@ export const COURT_WIDTH = 12
 export const COURT_DEPTH = 12
 export const PADDLE_SPEED = 0.15
 export const AI_SPEED = 0.07  // Slightly faster than before (was 0.05)
-export const BALL_SPEED = 0.08
+// Ball speed in units per second (framerate-independent)
+export const BALL_SPEED = 6
+// Maximum ball speed after repeated hits (same for all base speeds)
+export const MAX_BALL_SPEED = 28
