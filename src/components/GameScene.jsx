@@ -212,6 +212,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
         lastHitRef.current !== 'player'
       ) {
         // Increase ball speed by 8% on each hit, max 2x initial speed
+        // [Habit loop: Variable reward — Self (mastery)] Speed ramp + uncertainty per hit
         currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
         
         // Increase AI difficulty when player successfully returns the ball
@@ -234,7 +235,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
         Math.abs(ballPosition[0] - aiPaddleX) < PADDLE_WIDTH / 2 + BALL_SIZE &&
         lastHitRef.current !== 'ai'
       ) {
-        // Increase ball speed by 8% on each hit, max 2x initial speed
+        // [Habit loop: Variable reward] Speed ramp on AI paddle hit
         currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
         
         playPaddleHitSound()
