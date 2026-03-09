@@ -90,13 +90,13 @@ export default function Ball({ position, velocity, onPositionChange, onScore, on
         outOfBoundsTimeRef.current = null
       }
 
-      // Check if ball went past paddles (scoring)
+      // Check if ball went past paddles (scoring). Player at +Z (bottom), AI at -Z (top).
       if (ballRef.current.position.z > COURT_DEPTH / 2 + 1) {
-        onScore('player')
+        onScore('ai')
         return
       }
       if (ballRef.current.position.z < -COURT_DEPTH / 2 - 1) {
-        onScore('ai')
+        onScore('player')
         return
       }
 

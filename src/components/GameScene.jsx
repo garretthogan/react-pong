@@ -1,10 +1,14 @@
 import { useRef, useState, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { BALL_SPEED, MAX_BALL_SPEED, COURT_DEPTH, PADDLE_WIDTH, PADDLE_DEPTH, BALL_SIZE } from '../constants/gameConstants'
+import { useFrame, useThree } from '@react-three/fiber'
+import { BALL_SPEED, MAX_BALL_SPEED, COURT_DEPTH, PADDLE_WIDTH, PADDLE_DEPTH, BALL_SIZE, COURT_WIDTH } from '../constants/gameConstants'
 import Court from './Court'
 import PlayerPaddle from './PlayerPaddle'
 import AIPaddle from './AIPaddle'
 import Ball from './Ball'
+
+const MOBILE_BREAKPOINT_PX = 768
+const PADDLE_INSET_DESKTOP = 3
+const PADDLE_INSET_MOBILE = 3.5
 
 export default function GameScene({ onScoreChange, colorTheme, gameStarted, paused = false, mouseControlEnabled, ballSpeed = BALL_SPEED, audioUnlockRef, aiDifficulty: aiDifficultySetting = 0.5, audioMuted = false }) {
   const baseSpeed = ballSpeed ?? BALL_SPEED
@@ -12,12 +16,12 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
   const [ballPosition, setBallPosition] = useState([0, 0, 0])
   
   // Initialize with direction toward random paddle at game start
+  // Player is at +Z (bottom), AI at -Z (top); positive velocity = toward player
   const getInitialBallVelocity = () => {
     const towardPlayer = Math.random() < 0.5
-    // At game start, send toward random paddle (straight since paddles start at center)
     return [
       0,
-      baseSpeed * (towardPlayer ? -1 : 1)
+      baseSpeed * (towardPlayer ? 1 : -1)
     ]
   }
   
@@ -26,7 +30,25 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
   const [aiScore, setAiScore] = useState(0)
   const [keys, setKeys] = useState({})
   const [aiDifficulty, setAiDifficulty] = useState(0)
-  
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024))
+
+  const isMobile = viewportWidth <= MOBILE_BREAKPOINT_PX
+  const paddleInset = isMobile ? PADDLE_INSET_MOBILE : PADDLE_INSET_DESKTOP
+
+  const { size, camera } = useThree()
+  const zoom = camera?.zoom ?? 70
+  const visibleWidth = size.width / zoom
+  const visibleHeight = size.height / zoom
+  const courtFitScale = (size.width > 0 && size.height > 0)
+    ? Math.min(1, visibleWidth / COURT_WIDTH, visibleHeight / COURT_DEPTH)
+    : 1
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   // Refs to track actual paddle positions and current ball speed
   const playerPaddleRef = useRef()
   const aiPaddleRef = useRef()
@@ -41,7 +63,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
   useEffect(() => {
     if (gameStarted && !prevGameStartedRef.current) {
       const towardPlayer = Math.random() < 0.5
-      setBallVelocity([0, baseSpeed * (towardPlayer ? -1 : 1)])
+      setBallVelocity([0, baseSpeed * (towardPlayer ? 1 : -1)])
       currentBallSpeedRef.current = baseSpeed
     }
     prevGameStartedRef.current = gameStarted
@@ -56,7 +78,7 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
 
   const POINTER_LOCK_SENSITIVITY = 0.002
 
-  // Mouse movement handler (uses movementX when pointer is locked, else clientX)
+  // Mouse and touch handlers for paddle position
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!mouseControlEnabled) return
@@ -66,21 +88,31 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
         setMouseX((e.clientX / window.innerWidth) * 2 - 1)
       }
     }
-    
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 0) return
+      const clientX = e.touches[0].clientX
+      const normalized = (clientX / window.innerWidth) * 2 - 1
+      setMouseX(Math.max(-1, Math.min(1, normalized)))
+      e.preventDefault()
+    }
+
     const handleKeyDown = (e) => {
       setKeys(prev => ({ ...prev, [e.key]: true }))
     }
-    
+
     const handleKeyUp = (e) => {
       setKeys(prev => ({ ...prev, [e.key]: false }))
     }
 
     window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
-    
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('touchmove', handleTouchMove)
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
@@ -118,8 +150,8 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
       targetX = playerPaddleRef.current.position.x
     }
     
-    // Calculate velocity to aim at center of target paddle
-    const targetZ = towardAI ? (COURT_DEPTH / 2 - 1) : (-COURT_DEPTH / 2 + 1)
+    // Player at +Z (bottom), AI at -Z (top)
+    const targetZ = towardAI ? (-COURT_DEPTH / 2 + paddleInset) : (COURT_DEPTH / 2 - paddleInset)
     
     // Calculate direction vector
     const dx = targetX - 0 // Ball starts at x=0
@@ -149,9 +181,8 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
   
   const handleOutOfBounds = () => {
     // When ball goes out of bounds, determine who was closer/should receive serve
-    // Use ball's last Z position to determine who should get the serve
-    const ballWasNearPlayer = ballPosition[1] < 0
-    // Give ball to whoever it was near when it went out
+    // Player at +Z (bottom), AI at -Z (top)
+    const ballWasNearPlayer = ballPosition[1] > 0
     resetBallToTarget(!ballWasNearPlayer)
   }
 
@@ -198,61 +229,54 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
   }
 
   useFrame(() => {
-    const playerPaddleZ = -COURT_DEPTH / 2 + 1
-    const aiPaddleZ = COURT_DEPTH / 2 - 1
+    // Player at +Z (bottom), AI at -Z (top)
+    const playerPaddleZ = COURT_DEPTH / 2 - paddleInset
+    const aiPaddleZ = -COURT_DEPTH / 2 + paddleInset
     
-    // Check collision with player paddle using actual paddle position
+    // Check collision with player paddle (at bottom, ball approaches from negative Z)
     if (playerPaddleRef.current && ballPosition) {
       const playerPaddleX = playerPaddleRef.current.position.x
       
       if (
-        ballPosition[1] <= playerPaddleZ + PADDLE_DEPTH / 2 + BALL_SIZE &&
         ballPosition[1] >= playerPaddleZ - PADDLE_DEPTH / 2 - BALL_SIZE &&
+        ballPosition[1] <= playerPaddleZ + PADDLE_DEPTH / 2 + BALL_SIZE &&
         Math.abs(ballPosition[0] - playerPaddleX) < PADDLE_WIDTH / 2 + BALL_SIZE &&
         lastHitRef.current !== 'player'
       ) {
-        // Increase ball speed by 8% on each hit, max 2x initial speed
-        // [Habit loop: Variable reward — Self (mastery)] Speed ramp + uncertainty per hit
         currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
-        
-        // Increase AI difficulty when player successfully returns the ball
         setAiDifficulty(prev => prev + 1)
-        
         playPaddleHitSound()
         const hitPosition = (ballPosition[0] - playerPaddleX) / (PADDLE_WIDTH / 2)
-        setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.7, currentBallSpeedRef.current])
+        setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.7, -currentBallSpeedRef.current])
         lastHitRef.current = 'player'
       }
     }
     
-    // Check collision with AI paddle using actual paddle position
+    // Check collision with AI paddle (at top, ball approaches from positive Z)
     if (aiPaddleRef.current && ballPosition) {
       const aiPaddleX = aiPaddleRef.current.position.x
       
       if (
-        ballPosition[1] >= aiPaddleZ - PADDLE_DEPTH / 2 - BALL_SIZE &&
         ballPosition[1] <= aiPaddleZ + PADDLE_DEPTH / 2 + BALL_SIZE &&
+        ballPosition[1] >= aiPaddleZ - PADDLE_DEPTH / 2 - BALL_SIZE &&
         Math.abs(ballPosition[0] - aiPaddleX) < PADDLE_WIDTH / 2 + BALL_SIZE &&
         lastHitRef.current !== 'ai'
       ) {
-        // [Habit loop: Variable reward] Speed ramp on AI paddle hit
         currentBallSpeedRef.current = Math.min(currentBallSpeedRef.current * 1.08, MAX_BALL_SPEED)
-        
         playPaddleHitSound()
         const hitPosition = (ballPosition[0] - aiPaddleX) / (PADDLE_WIDTH / 2)
-        setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.5, -currentBallSpeedRef.current])
+        setBallVelocity([currentBallSpeedRef.current * hitPosition * 0.5, currentBallSpeedRef.current])
         lastHitRef.current = 'ai'
       }
     }
     
-    // Reset last hit when ball is in the middle
     if (Math.abs(ballPosition[1]) < COURT_DEPTH / 4) {
       lastHitRef.current = null
     }
   })
 
   return (
-    <>
+    <group scale={[courtFitScale, courtFitScale, courtFitScale]}>
       <ambientLight intensity={0.6} />
       <pointLight position={[0, 10, 0]} intensity={1.5} />
       <pointLight position={[0, 5, -10]} intensity={0.8} />
@@ -260,14 +284,14 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
       
       <Court lineColor={colorTheme.courtLines} floorColor={colorTheme.courtFloor} />
       <PlayerPaddle 
-        position={[0, 0.2, -COURT_DEPTH / 2 + 1]} 
+        position={[0, 0.2, COURT_DEPTH / 2 - paddleInset]} 
         mouseX={mouseX} 
         paddleRef={playerPaddleRef}
         color={colorTheme.playerPaddle}
         paused={paused}
       />
       <AIPaddle 
-        position={[0, 0.2, COURT_DEPTH / 2 - 1]} 
+        position={[0, 0.2, -COURT_DEPTH / 2 + paddleInset]} 
         ballPosition={ballPosition} 
         paddleRef={aiPaddleRef} 
         difficultyLevel={aiDifficulty}
@@ -285,6 +309,6 @@ export default function GameScene({ onScoreChange, colorTheme, gameStarted, paus
         gameStarted={gameStarted}
         paused={paused}
       />
-    </>
+    </group>
   )
 }

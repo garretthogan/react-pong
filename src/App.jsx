@@ -11,6 +11,7 @@ const THEME_MUTED_STORAGE_KEY = 'pongThemeMuted'
 const AI_DIFFICULTY_STORAGE_KEY = 'pongAiDifficulty'
 const MIN_BALL_SPEED = 1
 const MAX_BALL_SPEED = 50
+const MOBILE_BREAKPOINT_PX = 768
 
 function loadBallSpeed() {
   try {
@@ -29,7 +30,9 @@ function App() {
   const [playerScore, setPlayerScore] = useState(0)
   const [aiScore, setAiScore] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
-  const [mouseControlEnabled, setMouseControlEnabled] = useState(false)
+  const [mouseControlEnabled, setMouseControlEnabled] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth > MOBILE_BREAKPOINT_PX : true
+  )
   const [gameOver, setGameOver] = useState(false)
   const [winner, setWinner] = useState(null)
   const [gameKey, setGameKey] = useState(0)
@@ -451,15 +454,15 @@ function App() {
           <label className="game-checkbox-label" title="Toggle sound on or off">
             <input
               type="checkbox"
-              checked={!themeMuted}
-              aria-label="Unmute theme music and paddle sounds"
+              checked={themeMuted}
+              aria-label="Mute theme music and paddle sounds"
               onChange={(e) => {
-                const unmuting = e.target.checked
-                setThemeMuted(!unmuting)
-                if (unmuting) themeAudioRef.current?.play().catch(() => {})
+                const muted = e.target.checked
+                setThemeMuted(muted)
+                if (!muted) themeAudioRef.current?.play().catch(() => {})
               }}
             />
-            <span>Unmuted</span>
+            <span>Muted</span>
           </label>
           <label className="game-label">Volume</label>
           <input
